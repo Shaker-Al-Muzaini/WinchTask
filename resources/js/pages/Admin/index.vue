@@ -36,10 +36,10 @@ const switchTab = (tab: 'orders' | 'drivers') => {
     fetchData();
 };
 
+// جلب البيانات من الـ API المركزي لطبقة العرض
 const fetchData = async () => {
     isLoading.value = true;
     try {
-        // تم تحديث الرابط ليطابق مسار مجلد الـ Admin الفرعي داخل الـ Presentation
         const response = await axios.get<Order[]>(`/api/admin/orders?status=${activeTab.value === 'orders' ? 'pending' : 'assigned'}`);
         if (activeTab.value === 'orders') {
             orders.value = response.data;
@@ -48,8 +48,7 @@ const fetchData = async () => {
         }
     } catch (error: any) {
         console.error("خطأ أثناء الاتصال بالخادم الداخلي:", error);
-
-        Swal.fire({
+        await Swal.fire({
             icon: 'error',
             title: 'فشل جلب البيانات',
             text: 'تأكد من عمل الـ Route Binding لملف مسارات الـ Admin الجديد داخل الـ Provider الخاص بك.',
@@ -61,6 +60,7 @@ const fetchData = async () => {
     }
 };
 
+// دالة معالجة الإسناد التلقائي الجغرافي الشاملة
 const assignOrder = async (orderId: number) => {
     const confirmResult = await Swal.fire({
         title: 'هل أنت متأكد؟',
@@ -77,11 +77,18 @@ const assignOrder = async (orderId: number) => {
 
     isSubmitting.value = orderId;
 
+    // إظهار مؤشر التحميل أثناء معالجة استعلام ST_Distance_Sphere في الخلفية
+    Swal.fire({
+        title: 'جاري البحث...',
+        text: 'يتم الآن تحديد أقرب ونش متاح جغرافياً للطلب',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
     try {
-        // تحديث الرابط هنا أيضاً ليوجه للـ Admin Controller
         const response = await axios.post(`/api/admin/orders/${orderId}/assign`);
 
-        Swal.fire({
+        await Swal.fire({
             icon: 'success',
             title: 'تمت العملية بنجاح',
             text: response.data.message,
@@ -89,6 +96,7 @@ const assignOrder = async (orderId: number) => {
             showConfirmButton: false
         });
 
+        // تحديث البيانات تلقائياً في الواجهة دون عمل Refresh كامل
         await fetchData();
     } catch (error: any) {
         console.error("خطأ معالجة الإسناد:", error);
@@ -110,7 +118,6 @@ onMounted(() => {
     fetchData();
 });
 </script>
-
 <template>
     <div class="p-6 bg-slate-50 min-h-screen" dir="rtl">
         <div class="flex gap-4 mb-6">
@@ -153,7 +160,7 @@ onMounted(() => {
                                 class="bg-emerald-600 text-white px-5 py-2 rounded-lg hover:bg-emerald-700 disabled:bg-emerald-300 transition font-medium text-sm flex items-center gap-2 shadow-sm"
                             >
                                 <span v-if="isSubmitting === order.id" class="inline-block animate-pulse">جاري معالجة الإسناد...</span>
-                                <span v-else>إسناد الطلب التلقائي</span>
+                                <span v-else>إسناد الطلب </span>
                             </button>
                         </td>
                     </tr>

@@ -2,7 +2,7 @@
 
 namespace Src\Domain\Orders\Services;
 
-// تأكد من مطابقة هذا الـ Namespace للمكان الفعلي لموديل السائق في مشروعك
+use Illuminate\Support\Facades\DB;
 use Src\Domain\Driver\Models\Entities\Driver;
 use Src\Domain\Orders\Contracts\AssignOrderServiceInterface;
 use Src\Domain\Orders\Models\Entities\Order;
@@ -11,26 +11,35 @@ class AssignOrderService implements AssignOrderServiceInterface
 {
     public function assign(Order $order): bool
     {
-        $closestDriver = Driver::whereDoesntHave('orders', function ($query) {
-            $query->where('status', 'assigned');
-        })
-            ->selectRaw('id, name, lat, lng,
-                (ST_Distance_Sphere(point(lng, lat), point(?, ?)) / 1000) AS distance', [
-                $order->lng, // خط الطول للطلب
-                $order->lat,  // خط العرض للطلب
-            ])
-            ->orderBy('distance')
-            ->first();
+        return DB::transaction(function () use ($order) {
 
-        // 2. إذا لم يعثر النظام على أي سائق متاح، نرجع false ليعرض الـ Vue تنبيه السويت أليرت
-        if (! $closestDriver) {
-            return false;
-        }
+            $lockedOrder = Order::where('id', $order->id)
+                ->lockForUpdate()
+                ->first();
 
-        // 3. إسناد الطلب للسائق وتحديث الحالة بنجاح
-        return (bool) $order->update([
-            'driver_id' => $closestDriver->id,
-            'status' => 'assigned',
-        ]);
+            if (! $lockedOrder || $lockedOrder->status !== 'pending') {
+                return false;
+            }
+
+            $closestDriver = Driver::whereDoesntHave('orders', function ($query) {
+                $query->where('status', 'assigned');
+            })
+                ->selectRaw('id, name, lat, lng,
+                    (ST_Distance_Sphere(point(lng, lat), point(?, ?)) / 1000) AS distance', [
+                    $lockedOrder->lng,
+                    $lockedOrder->lat,
+                ])
+                ->orderBy('distance')
+                ->first();
+
+            if (! $closestDriver) {
+                return false;
+            }
+
+            return $lockedOrder->update([
+                'driver_id' => $closestDriver->id,
+                'status' => 'assigned',
+            ]);
+        });
     }
 }
