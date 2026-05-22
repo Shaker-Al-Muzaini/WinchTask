@@ -77,10 +77,9 @@ const assignOrder = async (orderId: number) => {
 
     isSubmitting.value = orderId;
 
-    // إظهار مؤشر التحميل أثناء معالجة استعلام ST_Distance_Sphere في الخلفية
     Swal.fire({
         title: 'جاري البحث...',
-        text: 'يتم الآن تحديد أقرب ونش متاح جغرافياً للطلب',
+        text: 'يتم الآن تحديد أقرب سائق متاح جغرافياً للطلب',
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
     });
@@ -96,7 +95,6 @@ const assignOrder = async (orderId: number) => {
             showConfirmButton: false
         });
 
-        // تحديث البيانات تلقائياً في الواجهة دون عمل Refresh كامل
         await fetchData();
     } catch (error: any) {
         console.error("خطأ معالجة الإسناد:", error);

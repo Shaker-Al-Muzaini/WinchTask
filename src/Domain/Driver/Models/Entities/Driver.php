@@ -13,24 +13,17 @@ class Driver extends Model
 
     protected $fillable = [
         'name',
-        'phone',
-        'winch_type',
-        'is_available',
-        'latitude',
-        'longitude',
+        'lat',
+        'lng',
     ];
 
     protected $casts = [
-        'is_available' => 'boolean',
-        'latitude' => 'float',
-        'longitude' => 'float',
+        'lat' => 'float',
+        'lng' => 'float',
     ];
 
-    /**
-     * علاقة السائق بالطلبات: السائق يمتلك العديد من الطلبات المسندة إليه
-     */
     public function orders(): HasMany
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(Order::class, 'driver_id');
     }
 }
