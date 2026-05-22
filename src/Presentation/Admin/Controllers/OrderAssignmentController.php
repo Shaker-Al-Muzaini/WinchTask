@@ -9,6 +9,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Src\Domain\Orders\Contracts\AssignOrderServiceInterface;
 use Src\Domain\Orders\Models\Entities\Order;
+use Src\Presentation\Admin\Requests\AssignOrderRequest;
 
 class OrderAssignmentController extends Controller
 {
@@ -46,9 +47,10 @@ class OrderAssignmentController extends Controller
         return response()->json($assignedOrders);
     }
 
-    public function assign($id): JsonResponse
+    public function assign(AssignOrderRequest $request, $id): JsonResponse
     {
         $order = Order::where('status', 'pending')->findOrFail($id);
+
         $success = $this->assignmentService->assign($order);
 
         if (! $success) {

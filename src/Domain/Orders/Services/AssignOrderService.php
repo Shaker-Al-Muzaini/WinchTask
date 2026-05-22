@@ -16,7 +16,6 @@ class AssignOrderService implements AssignOrderServiceInterface
             $lockedOrder = Order::where('id', $order->id)
                 ->lockForUpdate()
                 ->first();
-
             if (! $lockedOrder || $lockedOrder->status !== 'pending') {
                 return false;
             }
