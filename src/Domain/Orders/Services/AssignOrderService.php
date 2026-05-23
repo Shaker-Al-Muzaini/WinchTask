@@ -10,41 +10,46 @@ use Src\Domain\Orders\Models\Entities\Order;
 
 class AssignOrderService implements AssignOrderServiceInterface
 {
-    public function assign(Order $order): bool
+    public function assign(int|Order $orderId, ?int $driverId = null): bool
     {
-        $isAssigned = DB::transaction(function () use ($order) {
+        $isAssigned = DB::transaction(function () use ($orderId, $driverId, &$order) {
 
-            $lockedOrder = Order::where('id', $order->id)
-                ->lockForUpdate()
-                ->first();
+            $order = Order::where('id', $orderId)->lockForUpdate()->first();
 
-            if (! $lockedOrder || $lockedOrder->status !== 'pending') {
+            if (! $order || $order->status !== 'pending') {
                 return false;
             }
 
-            $closestDriver = Driver::available()
-                ->selectRaw('id, name, lat, lng,
-                    (ST_Distance_Sphere(point(lng, lat), point(?, ?)) / 1000) AS distance', [
-                    $lockedOrder->lng,
-                    $lockedOrder->lat,
-                ])
-                ->orderBy('distance')
-                ->first();
+            $driverQuery = Driver::query();
 
-            if (! $closestDriver) {
+            if ($driverId) {
+                $driverQuery->where('id', $driverId)
+                    ->whereDoesntHave('orders', function ($query) {
+                        $query->whereIn('status', ['assigned', 'in_progress', 'picked_up']);
+                    });
+            } else {
+                $driverQuery->available()
+                    ->selectRaw('*, (ST_Distance_Sphere(point(lng, lat), point(?, ?)) / 1000) AS distance', [
+                        $order->lng,
+                        $order->lat,
+                    ])
+                    ->orderBy('distance');
+            }
+
+            $targetDriver = $driverQuery->lockForUpdate()->first();
+
+            if (! $targetDriver) {
                 return false;
             }
 
-            return $lockedOrder->update([
-                'driver_id' => $closestDriver->id,
+            return $order->update([
+                'driver_id' => $targetDriver->id,
                 'status' => 'assigned',
             ]);
         });
 
-        if ($isAssigned) {
-            $order->refresh();
-
-            broadcast(new OrderAssignedEvent($order));
+        if ($isAssigned && $order) {
+            event(new OrderAssignedEvent($order));
         }
 
         return $isAssigned;
