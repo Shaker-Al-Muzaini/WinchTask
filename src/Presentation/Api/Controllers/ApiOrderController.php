@@ -4,6 +4,7 @@ namespace Src\Presentation\Api\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Src\Domain\Orders\Events\OrderCreatedEvent;
 use Src\Domain\Orders\Jobs\AssignOrderJob;
 use Src\Domain\Orders\Models\Entities\Order;
 use Src\Presentation\Api\Requests\StoreApiOrderRequest;
@@ -19,6 +20,8 @@ class ApiOrderController extends Controller
             'lat' => $request->latitude,
             'lng' => $request->longitude,
         ]);
+
+        broadcast(new OrderCreatedEvent($order));
 
         AssignOrderJob::dispatch($order->id);
 

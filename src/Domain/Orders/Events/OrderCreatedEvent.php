@@ -6,7 +6,7 @@ use Illuminate\Broadcasting\Channel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Queue\SerializesModels;
 
-class OrderAssignedEvent implements ShouldBroadcastNow
+class OrderCreatedEvent implements ShouldBroadcastNow
 {
     use SerializesModels;
 
@@ -14,7 +14,7 @@ class OrderAssignedEvent implements ShouldBroadcastNow
 
     public function __construct($order)
     {
-        $this->order = $order->load('driver');
+        $this->order = $order;
     }
 
     public function broadcastOn(): array
@@ -26,6 +26,6 @@ class OrderAssignedEvent implements ShouldBroadcastNow
 
     public function broadcastAs(): string
     {
-        return 'order.assigned';
+        return 'order.created';
     }
 }

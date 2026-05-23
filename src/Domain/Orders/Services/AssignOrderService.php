@@ -14,7 +14,6 @@ class AssignOrderService implements AssignOrderServiceInterface
     {
         $isAssigned = DB::transaction(function () use ($order) {
 
-            // 1. قفل سطر الطلب المستهدف (Pessimistic Locking) لحمايته من التزامن العالي
             $lockedOrder = Order::where('id', $order->id)
                 ->lockForUpdate()
                 ->first();
@@ -23,7 +22,7 @@ class AssignOrderService implements AssignOrderServiceInterface
                 return false;
             }
 
-            $closestDriver = Driver::available() // 💡 تم عزل منطق الإتاحة بـ الـ Scope النظيف هنا
+            $closestDriver = Driver::available()
                 ->selectRaw('id, name, lat, lng,
                     (ST_Distance_Sphere(point(lng, lat), point(?, ?)) / 1000) AS distance', [
                     $lockedOrder->lng,
@@ -43,7 +42,9 @@ class AssignOrderService implements AssignOrderServiceInterface
         });
 
         if ($isAssigned) {
-            event(new OrderAssignedEvent($order));
+            $order->refresh();
+
+            broadcast(new OrderAssignedEvent($order));
         }
 
         return $isAssigned;

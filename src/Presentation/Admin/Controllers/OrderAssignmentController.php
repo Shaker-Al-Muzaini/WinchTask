@@ -52,11 +52,9 @@ class OrderAssignmentController extends Controller
     }
 
     /**
-     * الإسناد اليدوي (عند ضغط الـ Admin على الزر الأخضر في لوحة التحكم)
      */
     public function assign(AssignOrderRequest $request, $id): JsonResponse
     {
-        // التأكد من أن الطلب المستهدف معلق وموجود فعلياً باستخدام الـ Scope
         $order = Order::pending()->findOrFail($id);
 
         $success = $this->assignmentService->assign($order);

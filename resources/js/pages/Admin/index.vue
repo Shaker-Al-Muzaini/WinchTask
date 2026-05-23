@@ -114,6 +114,26 @@ const assignOrder = async (orderId: number) => {
 
 onMounted(() => {
     fetchData();
+
+    // 🚀 ربط قنوات البث التلقائي لاستقبال التحديثات الحية بدون إعادة تحميل الصفحة
+    if (typeof window !== 'undefined' && window.Echo) {
+
+        window.Echo.channel('orders-channel')
+            // 1️⃣ عند استقبال طلب جديد من الـ API العام بوضعية pending
+            .listen('.order.created', (event: { order: Order }) => {
+                console.log('⚡ وصل طلب جديد عبر البث اللحظي:', event.order);
+                // إدراج الطلب الجديد مباشرة في أعلى المصفوفة
+                orders.value.unshift(event.order);
+            })
+
+            .listen('.order.assigned', (event: { order: Order }) => {
+                console.log('⚡ تم تحديث وإسناد الطلب بنجاح:', event.order);
+
+                orders.value = orders.value.filter(o => o.id !== event.order.id);
+
+                assignedOrders.value.unshift(event.order);
+            });
+    }
 });
 </script>
 <template>
